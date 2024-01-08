@@ -1,0 +1,40 @@
+{
+  "Permissions": [
+    {
+      "PutRequest": {
+        "Item": {
+          "pk": { "S": "7vbp07g95rg2c45g6btf2tlt65" },
+          "sk": { "S": "Admin" },
+          "permissions": { "SS": ["booking:write", "booking:read", "booking:delete"] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "pk": { "S": "7vbp07g95rg2c45g6btf2tlt65" },
+          "sk": { "S": "User" },
+          "permissions": { "SS": ["booking:read"] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "pk": { "S": "5rold41hv77gjceepkjouk0cjv" },
+          "sk": { "S": "Admin" },
+          "permissions": { "SS": ["review:write", "review:read", "review:delete"] }
+        }
+      }
+    },
+    {
+      "PutRequest": {
+        "Item": {
+          "pk": { "S": "5rold41hv77gjceepkjouk0cjv" },
+          "sk": { "S": "User" },
+          "permissions": { "SS": ["review:read"] }
+        }
+      }
+    }
+  ]
+}

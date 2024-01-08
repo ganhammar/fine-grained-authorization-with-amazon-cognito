@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Booking Client</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <p id="message"></p>
+
+    <script>
+      const clientId = "7vbp07g95rg2c45g6btf2tlt65";
+      const redirectUri = window.location.origin;
+      const authorizationEndpoint =
+        "https://permissions.auth.eu-north-1.amazoncognito.com/oauth2/authorize";
+      const tokenEndpoint =
+        "https://permissions.auth.eu-north-1.amazoncognito.com/oauth2/token";
+      const permissionsApiEndpoint =
+        "https://qr7ss5pnf1.execute-api.eu-north-1.amazonaws.com/prod/";
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get("code");
+      const state = urlParams.get("state");
+      const error = urlParams.get("error");
+
+      if (code && state) {
+        setMessage("Verifying login...");
+        const codeVerifier = localStorage.getItem("code_verifier");
+        localStorage.removeItem("code_verifier");
+
+        const tokenRequestBody = new URLSearchParams();
+        tokenRequestBody.append("grant_type", "authorization_code");
+        tokenRequestBody.append("code", code);
+        tokenRequestBody.append("redirect_uri", redirectUri);
+        tokenRequestBody.append("client_id", clientId);
+        tokenRequestBody.append("code_verifier", codeVerifier);
+
+        // Make a POST request to the token endpoint to exchange the code for an access token.
+        fetch(tokenEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: tokenRequestBody.toString(),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            setMessage(`
+              <p><b>All good!</b></p>
+              <p>Your access token is: ${data.access_token}</p>
+              <p>Your ID token is: ${data.id_token}</p>
+              <p><a href="/">Refetch</a></p>
+              <p><button onclick="fetchBooking('${data.access_token}')">Fetch Booking</button></p>`);
+          })
+          .catch((error) => {
+            console.error("Token exchange error:", error);
+          });
+      } else if (error) {
+        const errorDescription = urlParams.get("error_description");
+        setMessage(`Error: ${error}<br />Description: ${errorDescription}`);
+      } else {
+        setMessage("Redirecting to login...");
+        setTimeout(redirectToLogin, 2000);
+      }
+
+      async function fetchBooking(accessToken) {
+        const response = await fetch(`${permissionsApiEndpoint}booking`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        const data = await response.json();
+
+        console.log({
+          status: response.status,
+          data,
+        });
+      }
+
+      async function redirectToLogin() {
+        const codeVerifier = generateRandomCodeVerifier();
+        const codeChallenge = await generateCodeChallenge(codeVerifier);
+        const state = generateRandomState();
+
+        localStorage.setItem("code_verifier", codeVerifier);
+
+        const scope = encodeURIComponent("resources/booking-service");
+        window.location.href = `${authorizationEndpoint}?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256&scope=openid+profile+email+${scope}`;
+      }
+
+      function generateRandomCodeVerifier() {
+        const charset =
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        let codeVerifier = "";
+        for (let i = 0; i < 128; i++) {
+          const randomIndex = Math.floor(Math.random() * charset.length);
+          codeVerifier += charset.charAt(randomIndex);
+        }
+        return codeVerifier;
+      }
+
+      async function generateCodeChallenge(verifier) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(verifier);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        const codeChallenge = base64UrlEncode(new Uint8Array(hashBuffer));
+        return codeChallenge;
+      }
+
+      function base64UrlEncode(data) {
+        let base64 = btoa(String.fromCharCode.apply(null, data));
+        return base64
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+      }
+
+      function generateRandomState() {
+        return Math.random().toString(36).substring(7);
+      }
+
+      function setMessage(message) {
+        document.getElementById("message").innerHTML = message;
+      }
+    </script>
+  </body>
+</html>
